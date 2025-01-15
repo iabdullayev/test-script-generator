@@ -309,6 +309,48 @@ function filterDuplicateElements(elements) {
     );
 }
 
+function isInteractiveTextPattern(text) {
+    // Convert text to lowercase for case-insensitive matching
+    const lowercaseText = text.toLowerCase();
+    
+    // Common interactive element keywords
+    const buttonPatterns = [
+        /submit|send|save|cancel|delete|edit|update|create|add|remove|sign|log|click/,
+        /^ok$|^yes$|^no$|^back$/,
+        /continue|proceed|next|previous|prev|begin|start|end|finish/,
+        /\bgo\b|\bview\b|\bshow\b|\bhide\b|\bclose\b|\bopen\b/,
+        /\blogin\b|\blogout\b|\bregister\b|\bsignup\b|\bsignin\b/
+    ];
+
+    // Form input related patterns
+    const inputPatterns = [
+        /username|password|email|search|query|phone|address|name|message/,
+        /enter\s|type\s|input\s|fill/,
+        /field|box|form/
+    ];
+
+    // Link-like patterns
+    const linkPatterns = [
+        /learn more|read more|see more|view more|details/,
+        /visit|browse|explore|discover/,
+        /^more$/,
+        /\blink\b/
+    ];
+
+    // Navigation patterns
+    const navigationPatterns = [
+        /menu|navigation|nav|home|about|contact|help|support/,
+        /\btab\b|\bpage\b|\bscreen\b/,
+        /^main$|^back$/
+    ];
+
+    // Check against all patterns
+    const allPatterns = [...buttonPatterns, ...inputPatterns, ...linkPatterns, ...navigationPatterns];
+    
+    // Return true if text matches any of the interactive patterns
+    return allPatterns.some(pattern => pattern.test(lowercaseText));
+}
+
 module.exports = {
     generateAIScript,
     analyzeScreenshot
