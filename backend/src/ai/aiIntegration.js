@@ -2,8 +2,7 @@ const TestScriptService = require('./services/testScriptService');
 const fs = require('fs');
 
 if (!process.env.GOOGLE_AI_KEY) {
-    console.error('Google AI API key is not set in environment variables');
-    process.exit(1);
+    console.warn('Warning: Google AI API key is not set. AI-based script generation will be unavailable.');
 }
 
 /**
@@ -19,8 +18,12 @@ if (!process.env.GOOGLE_AI_KEY) {
 async function generateAIScript(screenshotPath, useCase = '', framework = '', pattern = '', predefinedElements = null) {
     try {
         // Validate screenshot path if provided
-        if (screenshotPath && !fs.existsSync(screenshotPath)) {
-            throw new Error(`Screenshot file not found at path: ${screenshotPath}`);
+        if (screenshotPath) {
+            try {
+                await fs.promises.access(screenshotPath);
+            } catch {
+                throw new Error(`Screenshot file not found at path: ${screenshotPath}`);
+            }
         }
 
         // Validate framework
@@ -29,21 +32,26 @@ async function generateAIScript(screenshotPath, useCase = '', framework = '', pa
         }
 
         // Generate script using TestScriptService
+        let elements = predefinedElements;
+        if (typeof predefinedElements === 'string') {
+            try {
+                elements = JSON.parse(predefinedElements);
+            } catch (error) {
+                console.warn('Warning: Failed to parse predefinedElements, using raw input.', error);
+            }
+        }
         const script = await TestScriptService.generateScript(
             screenshotPath,
             useCase,
             framework,
             pattern,
-            predefinedElements
+            elements
         );
 
         // Clean up screenshot file if it was temporary
         if (screenshotPath && screenshotPath.includes('uploads/')) {
-            try {
-                fs.unlinkSync(screenshotPath);
-            } catch (error) {
-                console.warn('Warning: Could not delete temporary screenshot file:', error);
-            }
+            fs.promises.unlink(screenshotPath)
+                .catch(error => console.warn('Warning: Could not delete temporary screenshot file:', error));
         }
 
         return script;

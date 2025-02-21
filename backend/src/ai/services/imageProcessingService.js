@@ -8,7 +8,7 @@ class ImageProcessingService {
 
     async analyzeScreenshot(screenshotPath) {
         try {
-            const imageContent = fs.readFileSync(screenshotPath);
+            const imageContent = fs.readFileSync(screenshotPath).toString("base64");
             
             const [result] = await this.visionClient.annotateImage({
                 image: { content: imageContent },
@@ -29,7 +29,7 @@ class ImageProcessingService {
     processInteractiveElements(result) {
         const elements = [];
         const textElements = result.textAnnotations || [];
-        const imageProperties = result.imagePropertiesAnnotation;
+        const imageProperties = result.imagePropertiesAnnotation || {};
         const objects = result.localizedObjectAnnotations || [];
 
         // Skip the first element as it contains all text
@@ -157,8 +157,21 @@ class ImageProcessingService {
     }
 
     hasContrastingBackground(area, imageProperties) {
-        // Implement contrast analysis based on imageProperties
-        return true;
+        if (!imageProperties.dominantColors || !imageProperties.dominantColors.colors) {
+            return false; // No color data available
+        }
+    
+        const colors = imageProperties.dominantColors.colors;
+        let highContrast = false;
+    
+        colors.forEach(colorInfo => {
+            const { score, color } = colorInfo;
+            if (score > 0.5 && (color.red > 200 || color.green > 200 || color.blue > 200)) {
+                highContrast = true;
+            }
+        });
+    
+        return highContrast;
     }
 
     isWithinInteractiveObject(bounds, objects) {
@@ -167,12 +180,12 @@ class ImageProcessingService {
 
     isStandardInteractiveSize(bounds) {
         const area = this.getElementArea(bounds);
-        return area.height >= 32 && area.height <= 48;
+        return area.height >= 24 && area.height <= 60;
     }
 
     checkAlignment(bounds, objects) {
-        // Implement alignment detection logic
-        return true;
+        const yPositions = objects.map(obj => obj.boundingPoly.vertices[0].y);
+        return yPositions.some(y => Math.abs(y - bounds[0].y) < 10);
     }
 
     determineScreenPosition(bounds) {
@@ -182,18 +195,18 @@ class ImageProcessingService {
         return 'content';
     }
 
-    isWithinBounds(elementBounds, containerBounds) {
-        return elementBounds[0].x >= containerBounds[0].x &&
-               elementBounds[0].y >= containerBounds[0].y &&
-               elementBounds[2].x <= containerBounds[2].x &&
-               elementBounds[2].y <= containerBounds[2].y;
+    isWithinBounds(elementBounds, containerBounds, tolerance = 5) {
+        return elementBounds[0].x >= (containerBounds[0].x - tolerance) &&
+               elementBounds[0].y >= (containerBounds[0].y - tolerance) &&
+               elementBounds[2].x <= (containerBounds[2].x + tolerance) &&
+               elementBounds[2].y <= (containerBounds[2].y + tolerance);
     }
 
     filterDuplicateElements(elements) {
         return elements.filter((el, index, self) =>
             index === self.findIndex(e => 
-                e.text === el.text &&
-                Math.abs(e.bounds[0].y - el.bounds[0].y) < 5
+                e.text.toLowerCase() === el.text.toLowerCase() && // Case insensitive
+                Math.abs(e.bounds[0].y - el.bounds[0].y) < 10 // Increased tolerance
             )
         );
     }

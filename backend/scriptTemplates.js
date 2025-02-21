@@ -1,52 +1,41 @@
 const scriptTemplates = {
   XCUITest: {
     chainedPageObject: {
-      name: "Chained Page Object Pattern",
-      description: "Uses BaseView pattern with chained methods and page objects",
-      viewEnumTemplate: `enum {PageName}View: BaseView {
-    // Element cases
-    case {ElementCases}
-
-    var identifier: String? {
-        switch self {
-            {IdentifierCases}
-        }
-    }
-
-    var elementType: ElementType {
-        switch self {
-            {ElementTypeCases}
-        }
-    }
-}`,
-      pageTemplate: `class {PageName}Page: BasePage {
-    init(testCase: XCTestCase) {
-        super.init(testCase: testCase)
-    }
-
-    @discardableResult
-    func verify{PageName}Loaded() -> Self {
-        XCTAssertTrue({PageName}View.{mainElement}.element.exists)
-        return self
-    }
-
-    {PageMethods}
-}`,
-      testTemplate: `class {PageName}Tests: XCTestCase {
-    var app: XCUIApplication!
+        name: "Chained Page Object Pattern",
+        pageTemplate: `class {PageName}Page {
+            let app: XCUIApplication
     
-    override func setUp() {
-        super.setUp()
-        continueAfterFailure = false
-        app = XCUIApplication()
-        app.launch()
-    }
+            init(app: XCUIApplication) {
+                self.app = app
+            }
     
-    func test{TestName}() {
-        let {pageName}Page = {PageName}Page(testCase: self)
-        {TestSteps}
-    }
-}`,
+            @discardableResult
+            func validateButton(_ identifier: String) -> Self {
+                let button = app.buttons[identifier]
+                XCTAssertTrue(button.exists, "\(identifier) button should exist")
+                return self
+            }
+        }`,
+    
+        testTemplate: `class {PageName}Tests: XCTestCase {
+            let app = XCUIApplication()
+    
+            override func setUpWithError() throws {
+                continueAfterFailure = false
+                app.launch()
+            }
+    
+            override func tearDownWithError() throws {
+                app.terminate()
+            }
+    
+            func testUIElements() throws {
+                let page = {PageName}Page(app: app)
+    
+                page
+                    {TestSteps}
+            }
+        }`,
       methodTemplates: {
         button: `
     @discardableResult

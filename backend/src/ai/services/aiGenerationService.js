@@ -195,13 +195,16 @@ Important: Generate only the code without any explanation or additional comments
         if (!Array.isArray(elements) || !config) return '';
         
         return elements.map(el => {
+            if (!el.name) el.name = "Unnamed Element";
+            if (!el.identifier) el.identifier = "unknown_identifier";
+    
             const selector = config.elementMapping[el.type]
                 ?.replace('{identifier}', el.identifier) || 'Unknown selector';
             
             return `- ${el.type}: "${el.name}"
-  Identifier: "${el.identifier}"
-  Selector: ${selector}
-  Purpose: ${this.inferElementPurpose(el)}`;
+      Identifier: "${el.identifier}"
+      Selector: ${selector}
+      Purpose: ${this.inferElementPurpose(el)}`;
         }).join('\n');
     }
 
@@ -235,9 +238,14 @@ Important: Generate only the code without any explanation or additional comments
     }
 
     inferElementPurpose(element) {
-        const nameLower = element.name.toLowerCase();
-        const identifierLower = element.identifier.toLowerCase();
-
+        const nameLower = element.name ? element.name.toLowerCase() : "";
+        const identifierLower = element.identifier ? element.identifier.toLowerCase() : "";
+    
+        if (!nameLower && !identifierLower) {
+            console.warn("Element is missing both 'name' and 'identifier':", element);
+            return "general interaction - Test basic functionality";
+        }
+    
         const patterns = {
             authentication: {
                 keywords: ['login', 'signin', 'signup', 'password', 'username'],
@@ -264,7 +272,7 @@ Important: Generate only the code without any explanation or additional comments
                 testSuggestion: 'Test selection behavior and state'
             }
         };
-
+    
         for (const [purpose, config] of Object.entries(patterns)) {
             if (config.keywords.some(keyword => 
                 nameLower.includes(keyword) || identifierLower.includes(keyword)
@@ -272,7 +280,7 @@ Important: Generate only the code without any explanation or additional comments
                 return `${purpose} - ${config.testSuggestion}`;
             }
         }
-
+    
         return 'general interaction - Test basic functionality';
     }
 
